@@ -11,3 +11,4 @@ set(SRCS
     ${CMAKE_CURRENT_LIST_DIR}/mplay.c)
 
 add_library(liblmdb STATIC ${SRCS})
+target_include_directories(liblmdb PUBLIC ${CMAKE_CURRENT_LIST_DIR})

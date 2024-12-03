@@ -1,0 +1,18 @@
+Standard: C++11
+TabWidth: 4
+UseTab: Never
+SortIncludes: true
+IncludeBlocks: Regroup
+ColumnLimit:     120
+IndentWidth:     4
+BreakBeforeBraces: Linux
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializersBeforeComma: true
+IndentCaseLabels: false
+AccessModifierOffset: -4
+AlignEscapedNewlines: LeftWithLastLine
+AlignOperands: true
+BinPackParameters: false
+BinPackArguments: false
+PointerAlignment: Left
+
