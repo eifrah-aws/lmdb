@@ -27,11 +27,18 @@ int main(int argc, char** argv)
     rc = mdb_env_open(env, "./testdb", MDB_NOTLS | MDB_NOLOCK, 0664);
     check_return_code(rc);
 
-    // Begin a txn - everything is done within a txn
+    // Create a txn for creating the db handle
     rc = mdb_txn_begin(env, nullptr, MDB_NOTLS | MDB_NOLOCK, &txn);
     check_return_code(rc);
 
     rc = mdb_dbi_open(txn, nullptr, MDB_CREATE, &dbi);
+    check_return_code(rc);
+
+    rc = mdb_txn_commit(txn);
+    check_return_code(rc);
+
+    // dbi is still in shared memory and can be used by other txns
+    rc = mdb_txn_begin(env, nullptr, MDB_NOTLS | MDB_NOLOCK, &txn);
     check_return_code(rc);
 
     const char* skey = "hello";
