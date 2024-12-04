@@ -24,7 +24,7 @@ struct TxnGuard final {
         if (txn) {
             m_txn = txn;
         } else {
-            m_txn = db->begin();
+            m_rc = mdb_txn_begin(db->m_env, nullptr, db->m_flags, &m_txn);
             m_owned = true;
         }
     }
@@ -51,11 +51,14 @@ struct TxnGuard final {
 
     /// Does this guard has an active txn?
     bool has_transaction() const { return m_txn != nullptr; }
+    /// In case we failed to create new transaction, return the error code
+    int last_error_code() const { return m_rc; }
     Transaction* transaction() const { return m_txn; }
 
 private:
     Transaction* m_txn = nullptr;
     bool m_owned = false;
+    int m_rc = 0;
 };
 
 void DB::open(std::string_view path, size_t flags)
@@ -76,6 +79,12 @@ void DB::open(std::string_view path, size_t flags)
     mkdir(path.data(), 0755);
     // Create & open environment
     int rc = mdb_env_create(&m_env);
+    CHECK_RETURN_CODE(rc);
+
+    // Set the initial size of the map to 1GB
+    rc = mdb_env_set_mapsize(m_env, m_map_size);
+    CHECK_RETURN_CODE(rc);
+
     rc = mdb_env_open(m_env, path.data(), m_flags, 0664);
     CHECK_RETURN_CODE(rc);
 
@@ -111,9 +120,27 @@ bool DB::put(std::string_view key, std::string_view value, Transaction* txn)
         return false;
     }
 
+    int error_code = try_put(key, value, txn);
+    switch (error_code) {
+    case 0:
+        return true;
+    case MDB_MAP_FULL:
+        // increase the map size and retry
+        m_map_size *= 2;
+        error_code = mdb_env_set_mapsize(m_env, m_map_size);
+        CHECK_RETURN_CODE_RET_FALSE(error_code);
+        return try_put(key, value, txn) == 0;
+    default:
+        m_last_err = mdb_strerror(error_code);
+        return false;
+    }
+}
+
+int DB::try_put(std::string_view key, std::string_view value, Transaction* txn)
+{
     TxnGuard txn_guard(this, txn);
     if (!txn_guard.has_transaction()) {
-        return false;
+        return txn_guard.last_error_code();
     }
 
     MDB_val k, v;
@@ -123,11 +150,12 @@ bool DB::put(std::string_view key, std::string_view value, Transaction* txn)
     v.mv_data = (void*)value.data();
 
     int rc = mdb_put(txn_guard.transaction(), m_dbi, &k, &v, 0);
-    CHECK_RETURN_CODE_RET_FALSE(rc);
+    if (rc != 0) {
+        return rc;
+    }
 
     rc = txn_guard.commit();
-    CHECK_RETURN_CODE_RET_FALSE(rc);
-    return true;
+    return rc;
 }
 
 std::optional<std::string_view> DB::get(std::string_view key, Transaction* txn)

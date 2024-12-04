@@ -43,6 +43,10 @@ public:
     bool is_open() const { return m_is_opened; }
     std::string_view last_error() { return m_last_err; }
 
+protected:
+    /// Try putting an entry returning lmdb underlying error code
+    int try_put(std::string_view key, std::string_view value, Transaction* txn = nullptr);
+
 private:
     friend class TxnGuard;
     MDB_env* m_env = nullptr;
@@ -50,6 +54,7 @@ private:
     bool m_is_opened = false;
     std::string m_last_err;
     size_t m_flags = 0;
+    size_t m_map_size = (1 << 30);
 };
 
 }; // namespace lmdb
