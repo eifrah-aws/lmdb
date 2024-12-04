@@ -29,6 +29,7 @@ public:
     void abort(Transaction* txn);
     bool commit(Transaction* txn);
     bool is_open() const { return m_is_opened; }
+    std::string_view last_error() { return m_last_err; }
 
 private:
     MDB_env* m_env = nullptr;
