@@ -58,12 +58,25 @@ private:
     bool m_owned = false;
 };
 
-void DB::open(std::string_view path)
+void DB::open(std::string_view path, size_t flags)
 {
+    m_flags = 0;
+    if (flags & kAsync) {
+        m_flags |= (MDB_NOSYNC | MDB_NOMETASYNC);
+    }
+
+    if (m_flags & kNoLocking) {
+        m_flags |= MDB_NOLOCK;
+    }
+
+    if (m_flags & kNoThreadLocalStorage) {
+        m_flags |= MDB_NOTLS;
+    }
+
     mkdir(path.data(), 0755);
     // Create & open environment
     int rc = mdb_env_create(&m_env);
-    rc = mdb_env_open(m_env, path.data(), MDB_NOTLS | MDB_NOLOCK, 0664);
+    rc = mdb_env_open(m_env, path.data(), m_flags, 0664);
     CHECK_RETURN_CODE(rc);
 
     // Create a txn for creating the db handle
@@ -144,7 +157,7 @@ Transaction* DB::begin()
     }
 
     MDB_txn* txn = nullptr;
-    int rc = mdb_txn_begin(m_env, nullptr, MDB_NOTLS | MDB_NOLOCK, &txn);
+    int rc = mdb_txn_begin(m_env, nullptr, m_flags, &txn);
     CHECK_RETURN_CODE_RET_NULL(rc);
     return txn;
 }
