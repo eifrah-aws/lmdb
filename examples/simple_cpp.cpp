@@ -26,6 +26,9 @@ int main(int argc, char** argv)
 
         auto value2 = db.get("key_2");
         std::cout << "key_2=" << value2.value_or("Not found!") << std::endl;
+
+        auto value3 = db.get("key_3");
+        std::cout << "key_3=" << value3.value_or("Not found!") << std::endl;
     }
     return 0;
 }

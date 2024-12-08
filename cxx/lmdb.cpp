@@ -175,6 +175,10 @@ std::optional<std::string_view> DB::get(std::string_view key, Transaction* txn)
     k.mv_data = (void*)key.data();
 
     int rc = mdb_get(txn_guard.transaction(), m_dbi, &k, &v);
+    if (rc != MDB_SUCCESS) {
+        m_last_err = std::string(mdb_strerror(rc));
+        return {};
+    }
     return std::string_view(reinterpret_cast<const char*>(v.mv_data), v.mv_size);
 }
 
