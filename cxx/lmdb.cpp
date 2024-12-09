@@ -85,7 +85,7 @@ void DB::open(std::string_view path, size_t flags)
     rc = mdb_env_set_mapsize(m_env, m_map_size);
     CHECK_RETURN_CODE(rc);
 
-    rc = mdb_env_open(m_env, path.data(), m_flags, 0664);
+    rc = mdb_env_open(m_env, path.data(), m_flags | MDB_NORDAHEAD | MDB_NOMEMINIT, 0664);
     CHECK_RETURN_CODE(rc);
 
     // Create a txn for creating the db handle
@@ -144,10 +144,11 @@ int DB::try_put(std::string_view key, std::string_view value, Transaction* txn)
     }
 
     MDB_val k, v;
-    k.mv_size = key.length();
     k.mv_data = (void*)key.data();
-    v.mv_size = value.length();
+    k.mv_size = key.length();
+
     v.mv_data = (void*)value.data();
+    v.mv_size = value.length();
 
     int rc = mdb_put(txn_guard.transaction(), m_dbi, &k, &v, 0);
     if (rc != 0) {
